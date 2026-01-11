@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # PHP Backend Service
+  php:
+    image: php:8.2-apache
+    container_name: price_tracker_php
+    ports:
+      - "8000:80"
+    volumes:
+      - ../backend:/var/www/html
+    depends_on:
+      - mysql
+
+  # MySQL Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: price_tracker_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: price_tracker
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
