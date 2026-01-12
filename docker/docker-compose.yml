@@ -3,7 +3,9 @@ version: '3.8'
 services:
   # PHP Backend Service
   php:
-    image: php:8.2-apache
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: price_tracker_php
     ports:
       - "8000:80"
