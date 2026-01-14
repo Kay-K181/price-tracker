@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use \App\Services\ScraperService;
 
 Route::get('/', function () {
     return view('welcome');
@@ -12,4 +13,9 @@ Route::get('/api/test', function () {
         'database' => 'connected',
         'timestamp' => now()
     ]);
+});
+
+Route::get('/api/scrape-test', function (ScraperService $scraper) {
+    $result = $scraper->scrapeProduct('https://www.myprotein.com/');
+    return response()->json($result);
 });
