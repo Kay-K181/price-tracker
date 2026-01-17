@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Jobs\ScrapeProductJob;
 use App\Services\ScraperService;
 use Illuminate\Http\Request;
 
@@ -28,33 +29,13 @@ class ScrapeController
             ],400 );
         }
 
-        $result = $this->scraperService->scrapeProduct($url, $forceRefresh);
+        ScrapeProductJob::dispatch($url, $forceRefresh);
 
-        if (!$result) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to scrape the product data.'
-            ], 500);
-        }
-
-        $response = [
+        return response()->json([
             'success' => true,
-            'product' => $result['data'],
-            'message' => 'Product data scraped successfully.',
-        ];
-
-        if ((isset($result['product_id']))) {
-            $response['product_id'] = $result['product_id'];
-        }
-
-        if (isset($result['from_cache'])) {
-            $response['from_cache'] = $result['from_cache'];
-            if (isset($result['cached_at'])) {
-                $response['cached_at'] = $result['cached_at'];
-            }
-        }
-
-        return response()->json($response, 201);
+            'message' => 'Scraping job dispatched successfully.',
+            'url' => $url,
+        ], 202);
     }
 
     private function isSupportedSite(string $url): bool

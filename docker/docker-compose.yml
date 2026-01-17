@@ -36,6 +36,20 @@ services:
     volumes:
       - redis_data:/data
 
+  # LocalStack (Fake AWS for SQS)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: price_tracker_localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - localstack_data:/var/lib/localstack
+
 volumes:
   mysql_data:
   redis_data:
+  localstack_data:
