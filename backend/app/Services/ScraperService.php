@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Redis;
 use Spatie\Browsershot\Browsershot;
 use Symfony\Component\DomCrawler\Crawler;
 use App\Models\Product;
 
 class ScraperService
 {
-    private function extractProductData(Crawler $crawler, string $url) : array
+    private function extractProductData(Crawler $crawler, string $url): array
     {
         $name = $crawler->filter('#product-title')->count() > 0 ? trim($crawler->filter('#product-title')->text()) : 'Unknown Product';
 
@@ -28,7 +29,8 @@ class ScraperService
             'url' => $url,
         ];
     }
-    private function getSourceFromUrl(string $url) : string
+
+    private function getSourceFromUrl(string $url): string
     {
         if (str_contains($url, 'myprotein')) return 'MyProtein';
         if (str_contains($url, 'bulk.com')) return 'Bulk';
@@ -36,37 +38,56 @@ class ScraperService
 
         return 'Unknown';
     }
-    public function scrapeProduct(string $url)
+
+    public function scrapeProduct(string $url, bool $forceRefresh = false): array
     {
-       try {
-           $html = Browsershot::url($url)
-               ->setNodeBinary('/usr/bin/node')
+        try {
+            $cacheKey = 'product'. md5($url);
+
+            if (!$forceRefresh) {
+                $cached = Redis::get($cacheKey);
+                if ($cached) {
+                    $cachedData = json_decode($cached, true);
+
+                    return [
+                        'success' => true,
+                        'data' => $cachedData,
+                        'from_cache' => true,
+                        'cached_at' => Redis::ttl($cacheKey) . ' seconds remaining'
+                    ];
+                }
+            }
+
+            $html = Browsershot::url($url)
+                ->setNodeBinary('/usr/bin/node')
                 ->setNpmBinary('/usr/bin/npm')
-               ->setChromePath('/usr/bin/chromium')
-               ->noSandbox()
+                ->setChromePath('/usr/bin/chromium')
+                ->noSandbox()
                 ->bodyHtml();
 
-           $crawler = new Crawler($html);
+            $crawler = new Crawler($html);
 
-           $productData = $this->extractProductData($crawler, $url);
+            $productData = $this->extractProductData($crawler, $url);
 
-           $product = Product::updateOrCreate(
-               ['url' => $productData['url']],
-               $productData
-           );
+            $product = Product::updateOrCreate(
+                ['url' => $productData['url']],
+                $productData
+            );
 
-           return [
-               'success' => true,
-               'data' => $productData,
-               'saved_product' => true,
-               'product_id' => $product->id
-           ];
+            Redis::setex($cacheKey, 3600, json_encode($productData));
 
-       } catch (\Exception $e) {
-           return [
-               'success' => false,
-               'error' => 'Failed to scrape product: ' . $e->getMessage()
-           ];
-       }
+            return [
+                'success' => true,
+                'data' => $productData,
+                'saved_product' => true,
+                'product_id' => $product->id
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Failed to scrape product: ' . $e->getMessage()
+            ];
+        }
     }
 }

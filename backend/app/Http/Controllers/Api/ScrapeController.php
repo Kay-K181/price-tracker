@@ -14,10 +14,12 @@ class ScrapeController
     public function scrape(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
-            'url' => 'required|url|max:500'
+            'url' => 'required|url|max:500',
+            'force_refresh' => 'sometimes|boolean'
         ]);
 
         $url = $validated['url'];
+        $forceRefresh = $validated['force_refresh'] ?? false;
 
         if (!$this->isSupportedSite($url)) {
             return response()->json([
@@ -26,7 +28,7 @@ class ScrapeController
             ],400 );
         }
 
-        $result = $this->scraperService->scrapeProduct($url);
+        $result = $this->scraperService->scrapeProduct($url, $forceRefresh);
 
         if (!$result) {
             return response()->json([
@@ -35,13 +37,24 @@ class ScrapeController
             ], 500);
         }
 
-        return response()->json([
+        $response = [
             'success' => true,
             'product' => $result['data'],
             'message' => 'Product data scraped successfully.',
-            'product_id' => $result['product_id']
+        ];
 
-        ]);
+        if ((isset($result['product_id']))) {
+            $response['product_id'] = $result['product_id'];
+        }
+
+        if (isset($result['from_cache'])) {
+            $response['from_cache'] = $result['from_cache'];
+            if (isset($result['cached_at'])) {
+                $response['cached_at'] = $result['cached_at'];
+            }
+        }
+
+        return response()->json($response, 201);
     }
 
     private function isSupportedSite(string $url): bool

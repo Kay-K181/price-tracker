@@ -18,6 +18,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install MySQL extension
 RUN docker-php-ext-install pdo pdo_mysql
 
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
 # Enable Apache rewrite module
 RUN a2enmod rewrite
 
