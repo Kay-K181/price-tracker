@@ -14,6 +14,8 @@ services:
       - ./apache-laravel.conf:/etc/apache2/sites-available/000-default.conf
     depends_on:
       - mysql
+    networks:
+      - app-network
 
   # MySQL Database Service
   mysql:
@@ -26,6 +28,8 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
 
   # Redis Cache Service
   redis:
@@ -35,6 +39,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - app-network
 
   # LocalStack (Fake AWS for SQS)
   localstack:
@@ -43,12 +49,14 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=sqs
+      - SERVICES=sqs,s3
       - DEBUG=1
       - DATA_DIR=/tmp/localstack/data
     volumes:
       - localstack_data:/var/lib/localstack
       - ./localstack-init:/etc/localstack/init/ready.d
+    networks:
+      - app-network
 
   # Queue Worker (Auto-starts)
   worker:
@@ -65,8 +73,14 @@ services:
       - mysql
       - redis
       - localstack
+    networks:
+      - app-network
 
 volumes:
   mysql_data:
   redis_data:
   localstack_data:
+
+networks:
+  app-network:
+    driver: bridge

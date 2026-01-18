@@ -6,9 +6,13 @@ use Illuminate\Support\Facades\Redis;
 use Spatie\Browsershot\Browsershot;
 use Symfony\Component\DomCrawler\Crawler;
 use App\Models\Product;
+use App\Services\S3Service;
 
 class ScraperService
 {
+    public function __construct(
+        private S3Service $s3Service
+    ){}
     private function extractProductData(Crawler $crawler, string $url): array
     {
         $name = $crawler->filter('#product-title')->count() > 0 ? trim($crawler->filter('#product-title')->text()) : 'Unknown Product';
@@ -17,15 +21,21 @@ class ScraperService
 
         $price = (float) preg_replace('/[^0-9.]/', '', $priceText);
 
-        $imageUrl = $crawler->filter('img.gallery-image')->count() > 0 ? $crawler->filter('img.gallery-image')->attr('src')
+        $sourceImageUrl = $crawler->filter('img.gallery-image')->count() > 0 ? $crawler->filter('img.gallery-image')->attr('src')
             : null;
+
+        $s3ImageUrl = null;
+        if ($sourceImageUrl) {
+            $filename = md5($url) . '.jpg';
+            $s3ImageUrl = $this->s3Service->uploadImage($sourceImageUrl, $filename);
+        }
 
         return [
             'name' => $name,
             'price' => $price,
             'currency' => 'GBP',
             'source' => $this->getSourceFromUrl($url),
-            'image_url' => $imageUrl,
+            'image_url' => $s3ImageUrl ?? $sourceImageUrl,
             'url' => $url,
         ];
     }
