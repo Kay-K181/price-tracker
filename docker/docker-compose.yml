@@ -48,6 +48,23 @@ services:
       - DATA_DIR=/tmp/localstack/data
     volumes:
       - localstack_data:/var/lib/localstack
+      - ./localstack-init:/etc/localstack/init/ready.d
+
+  # Queue Worker (Auto-starts)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: price_tracker_worker
+    command: php /var/www/html/artisan queue:work sqs --tries=3 --timeout=120 --sleep=3
+    volumes:
+      - ../backend:/var/www/html
+      - ./apache-laravel.conf:/etc/apache2/sites-available/000-default.conf
+    depends_on:
+      - php
+      - mysql
+      - redis
+      - localstack
 
 volumes:
   mysql_data:
